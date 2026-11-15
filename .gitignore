@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+clips/
+*.mp4
+*.mkv
+*.ass
+.venv/
+venv/
