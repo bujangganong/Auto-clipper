@@ -23,7 +23,18 @@ pip install -r requirements.txt
 
 GPU NVIDIA (CUDA) dipakai otomatis oleh faster-whisper bila tersedia; tanpa GPU tetap jalan di CPU (pilih model Whisper yang lebih kecil, mis. `base`).
 
-## Pakai
+## Pakai — tampilan web (seperti FaceFusion)
+
+```bat
+conda activate auto-clipper
+python app.py
+```
+
+Lalu buka **http://127.0.0.1:7860** di browser: seret file video, atur jumlah klip & posisi facecam, klik **Proses**. Klip hasil bisa diunduh dari halaman yang sama, lengkap dengan galeri thumbnail buat mengintip isinya.
+
+Tambahkan `--lan` (`python app.py --lan`) kalau mau membuka halamannya dari HP selama laptop menyala di Wi-Fi yang sama.
+
+## Pakai — terminal
 
 ```bat
 python clipper.py stream.mp4 --facecam auto --num 5
