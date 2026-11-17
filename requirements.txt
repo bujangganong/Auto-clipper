@@ -1,4 +1,4 @@
 faster-whisper>=1.0
-opencv-python>=4.8
+opencv-python==4.10.0.84
 numpy>=1.24
 gradio>=4.0

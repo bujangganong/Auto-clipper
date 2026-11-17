@@ -28,6 +28,64 @@ def transcribe_words(video_path: str, model_size: str = "small", language: str |
     return words
 
 
+def clip_words(words: list[dict], clip_start: float, clip_end: float) -> list[dict]:
+    """Kata-kata yang jatuh di dalam rentang klip [clip_start, clip_end]."""
+    return [w for w in words if not (w["end"] < clip_start or w["start"] > clip_end)]
+
+
+def retime_edited_words(words: list[dict], edited_text: str, clip_start: float, clip_end: float) -> list[dict]:
+    """Susun ulang timing kata setelah teks transkrip diedit pemakai.
+
+    Kata yang tidak berubah mempertahankan timestamp Whisper aslinya.
+    Kata yang diganti/disispkan mendapat jatah waktu dari rentang kata
+    asli di sekitarnya, jadi gaya subtitle kata-per-kata tetap sinkron.
+    Kata yang dihapus hilang. Kalau aslinya tidak ada kata sama sekali,
+    teks editan disebar merata di sepanjang klip.
+    """
+    import difflib
+
+    orig = clip_words(words, clip_start, clip_end)
+    tokens = edited_text.split()
+    if not tokens:
+        return []
+    if not orig:
+        dur = max(0.1, clip_end - clip_start)
+        step = dur / len(tokens)
+        return [
+            {"start": clip_start + i * step, "end": clip_start + (i + 1) * step, "text": t}
+            for i, t in enumerate(tokens)
+        ]
+    orig_tokens = [w["text"] for w in orig]
+    sm = difflib.SequenceMatcher(
+        a=[t.lower() for t in orig_tokens],
+        b=[t.lower() for t in tokens],
+        autojunk=False,
+    )
+    out: list[dict] = []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            for k in range(j2 - j1):
+                w = orig[i1 + k]
+                out.append({"start": w["start"], "end": w["end"], "text": tokens[j1 + k]})
+        elif tag in ("replace", "insert"):
+            if tag == "replace" and i2 > i1:
+                t_start = orig[i1]["start"]
+                t_end = orig[i2 - 1]["end"]
+            else:
+                t_start = orig[i1 - 1]["end"] if i1 > 0 else clip_start
+                t_end = orig[i2]["start"] if i2 < len(orig) else clip_end
+            n = j2 - j1
+            if t_end <= t_start:
+                t_end = t_start + 0.12 * n
+            step = (t_end - t_start) / n
+            for k in range(n):
+                s = t_start + k * step
+                out.append({"start": s, "end": s + step, "text": tokens[j1 + k]})
+        # "delete": kata asli dibuang, tidak diikutkan
+    out.sort(key=lambda w: w["start"])
+    return out
+
+
 def _ass_time(sec: float) -> str:
     sec = max(0.0, sec)
     h = int(sec // 3600)

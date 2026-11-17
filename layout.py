@@ -32,6 +32,38 @@ def main_panel_height(src_w: int, src_h: int) -> int:
     return h - (h % 2)
 
 
+def panel_height(src_w: int, src_h: int, top_ratio: float | None = None) -> int:
+    """Tinggi panel footage: proporsional, atau rasio kanvas bila diminta."""
+    if top_ratio and top_ratio > 0:
+        h = round(CANVAS_H * top_ratio)
+    else:
+        h = main_panel_height(src_w, src_h)
+    h = max(200, min(CANVAS_H - 200, h))
+    return h - (h % 2)
+
+
+def _main_filter(top_h: int, fit_mode: str) -> str:
+    """Filter panel footage sesuai mode isi: crop / fit-blur / fit-hitam."""
+    if fit_mode == "fit-blur":
+        return (
+            f"[0:v]split=2[msrc][mfg];"
+            f"[msrc]scale={CANVAS_W}:{top_h}:force_original_aspect_ratio=increase,"
+            f"crop={CANVAS_W}:{top_h},gblur=sigma=40,eq=brightness=-0.08[mbg];"
+            f"[mfg]scale={CANVAS_W}:{top_h}:force_original_aspect_ratio=decrease[mf];"
+            f"[mbg][mf]overlay=(W-w)/2:(H-h)/2[main];"
+        )
+    if fit_mode == "fit-hitam":
+        return (
+            f"[0:v]scale={CANVAS_W}:{top_h}:force_original_aspect_ratio=decrease,"
+            f"pad={CANVAS_W}:{top_h}:(ow-iw)/2:(oh-ih)/2:black[main];"
+        )
+    # crop: isi penuh panel, potong sisi yang berlebih (default)
+    return (
+        f"[0:v]scale={CANVAS_W}:{top_h}:force_original_aspect_ratio=increase,"
+        f"crop={CANVAS_W}:{top_h}[main];"
+    )
+
+
 def render_clip(
     video_path: str,
     start: float,
@@ -40,15 +72,17 @@ def render_clip(
     ass_path: str | None,
     out_path: str,
     crf: int = 20,
+    fit_mode: str = "crop",
+    top_ratio: float | None = None,
 ) -> str:
     """Potong segmen [start, end] dan render ke layout vertikal. facecam_box = (x, y, w, h) piksel."""
     fx, fy, fw, fh = facecam_box
     dur = end - start
     src_w, src_h = probe_size(video_path)
-    top_h = main_panel_height(src_w, src_h)
+    top_h = panel_height(src_w, src_h, top_ratio)
     cam_h = CANVAS_H - top_h
     fc = (
-        f"[0:v]scale={CANVAS_W}:{top_h}[main];"
+        _main_filter(top_h, fit_mode) +
         f"[0:v]crop={fw}:{fh}:{fx}:{fy},"
         f"scale={CANVAS_W}:{cam_h}:force_original_aspect_ratio=increase,"
         f"crop={CANVAS_W}:{cam_h}[cam];"

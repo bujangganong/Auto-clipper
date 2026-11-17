@@ -91,6 +91,10 @@ def main() -> int:
     ap.add_argument("--model", default="small", help="Model Whisper (default: small)")
     ap.add_argument("--lang", default="id", help="Bahasa transkrip, mis. id/en (default: id)")
     ap.add_argument("--no-subs", action="store_true", help="Lewati pembuatan subtitle")
+    ap.add_argument("--fit", default="crop", choices=["crop", "fit-blur", "fit-hitam"],
+                    help="Mode tampilan footage: crop = isi penuh potong sisi, fit-blur/fit-hitam = footage utuh berlatar (default: crop)")
+    ap.add_argument("--top-ratio", type=float, default=None,
+                    help="Tinggi panel footage sebagai rasio kanvas, mis. 0.5 (default: proporsional)")
     args = ap.parse_args()
 
     video = Path(args.video)
@@ -123,7 +127,8 @@ def main() -> int:
         print("Mentranskrip omongan (Whisper)...")
         words = transcribe_words(str(video), model_size=args.model, language=args.lang)
 
-    sub_y = main_panel_height(width, height) + 60  # subtitle tepat di bawah sambungan dua panel
+    from layout import panel_height
+    sub_y = panel_height(width, height, args.top_ratio) + 60  # subtitle tepat di bawah sambungan dua panel
     for i, m in enumerate(moments, 1):
         ass_path = None
         if words:
@@ -131,7 +136,8 @@ def main() -> int:
             words_to_ass(words, m["start"], m["end"], ass_path, pos_y=sub_y)
         out_path = str(out_dir / f"klip-{i:02d}.mp4")
         print(f"Merender {out_path} ...")
-        render_clip(str(video), m["start"], m["end"], box, ass_path, out_path)
+        render_clip(str(video), m["start"], m["end"], box, ass_path, out_path,
+                    fit_mode=args.fit, top_ratio=args.top_ratio)
     print(f"Selesai. {len(moments)} klip tersimpan di {out_dir}/")
     return 0
 

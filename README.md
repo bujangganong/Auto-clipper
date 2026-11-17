@@ -32,6 +32,12 @@ python app.py
 
 Lalu buka **http://127.0.0.1:7860** di browser: seret file video, atur jumlah klip & posisi facecam, klik **Proses**. Klip hasil bisa diunduh dari halaman yang sama, lengkap dengan galeri thumbnail buat mengintip isinya.
 
+**Posisi facecam visual:** mode `visual` — klik **Ambil frame contoh**, lalu klik dua sudut kotak wajah di gambar contoh (kiri-atas, lalu kanan-bawah). Kotaknya tergambar di gambar dan angka `x/y/w/h` terisi otomatis; klik lagi untuk menggambar ulang. Lebih gampang daripada menebak angka manual.
+
+**Edit transkrip:** tampilan web bekerja dua langkah. **1. Analisis + transkrip** mencari momen seru dan mengisi teks transkrip tiap klip — teks itu **bisa diedit** (betulkan kata yang salah dengar, hapus, atau tambah kata). **2. Render klip** membuat video memakai teks hasil editan; timing kata-per-kata menyesuaikan otomatis (kata yang tidak diubah mempertahankan timing Whisper aslinya).
+
+**Kustomisasi panel footage:** pilihan *Mode tampilan footage* — `crop` (isi penuh panel, sisi berlebih dipotong), `fit-blur` (footage tampil utuh, ruang kosong diisi latar blur dari footage itu sendiri), atau `fit-hitam` (footage utuh berlatar hitam). Slider *Tinggi panel footage* mengatur porsi layar untuk footage (0 = proporsional otomatis; 0.5 = setengah layar, facecam mengisi sisanya). Di terminal: `--fit` dan `--top-ratio`.
+
 Tambahkan `--lan` (`python app.py --lan`) kalau mau membuka halamannya dari HP selama laptop menyala di Wi-Fi yang sama.
 
 ## Pakai — terminal
