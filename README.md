@@ -38,6 +38,8 @@ Lalu buka **http://127.0.0.1:7860** di browser: seret file video, atur jumlah kl
 
 **Kustomisasi panel footage:** pilihan *Mode tampilan footage* — `crop` (isi penuh panel, sisi berlebih dipotong), `fit-blur` (footage tampil utuh, ruang kosong diisi latar blur dari footage itu sendiri), atau `fit-hitam` (footage utuh berlatar hitam). Slider *Tinggi panel footage* mengatur porsi layar untuk footage (0 = proporsional otomatis; 0.5 = setengah layar, facecam mengisi sisanya). Di terminal: `--fit` dan `--top-ratio`.
 
+**Mode manual:** selain deteksi otomatis, ada *Mode klip → Manual*: putar videonya, catat waktu momennya, lalu isi rentang `mulai - selesai` satu per baris (detik atau `m:ss`, maksimal 10 rentang). Klip manual melewati langkah yang sama — facecam, subtitle yang bisa diedit, dan mode footage berlaku juga. Di terminal: `--manual '1:23-1:45, 3:02-3:40'`.
+
 Tambahkan `--lan` (`python app.py --lan`) kalau mau membuka halamannya dari HP selama laptop menyala di Wi-Fi yang sama.
 
 ## Pakai — terminal

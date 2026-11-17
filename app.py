@@ -20,7 +20,7 @@ import gradio as gr
 from PIL import Image, ImageDraw
 
 from clipper import detect_facecam, parse_facecam, probe_size
-from highlights import extract_audio_samples, find_highlights
+from highlights import extract_audio_samples, find_highlights, parse_ranges
 from layout import main_panel_height, panel_height, render_clip
 from subtitles import clip_words, retime_edited_words, transcribe_words, words_to_ass
 
@@ -121,7 +121,7 @@ def reset_kotak(state):
     return state["frame"], state, "Kotak dihapus. Klik dua sudut di gambar untuk memilih ulang."
 
 
-def analisis(video_path, num, facecam_mode, fx, fy, fw, fh, fit_mode, top_ratio, model, lang, pakai_subs, progress=gr.Progress()):
+def analisis(video_path, num, klip_mode, manual_text, facecam_mode, fx, fy, fw, fh, fit_mode, top_ratio, model, lang, pakai_subs, progress=gr.Progress()):
     """Langkah 1: tentukan facecam, cari momen seru, transkrip. Hasil
     transkrip per klip ditampilkan sebagai teks yang BISA DIEDIT."""
     if not video_path:
@@ -137,11 +137,22 @@ def analisis(video_path, num, facecam_mode, fx, fy, fw, fh, fit_mode, top_ratio,
     else:
         box = parse_facecam(f"{fx},{fy},{fw},{fh}", width, height)
 
-    progress(0.2, desc="Menganalisis suara untuk momen seru...")
-    samples = extract_audio_samples(str(src))
-    moments = find_highlights(samples, num_clips=int(num))
-    if not moments:
-        raise gr.Error("Tidak ada momen seru yang ditemukan di video ini.")
+    if klip_mode == "manual":
+        progress(0.2, desc="Membaca rentang waktu pilihanmu...")
+        try:
+            moments = parse_ranges(manual_text or "", duration=_probe_duration(str(src)) or None)
+        except ValueError as e:
+            raise gr.Error(f"Rentang manual bermasalah: {e}") from None
+        if not moments:
+            raise gr.Error("Isi dulu rentang waktunya, satu per baris. Contoh: 1:23 - 1:45")
+        if len(moments) > MAX_CLIPS:
+            raise gr.Error(f"Maksimal {MAX_CLIPS} rentang sekali proses (kamu isi {len(moments)}).")
+    else:
+        progress(0.2, desc="Menganalisis suara untuk momen seru...")
+        samples = extract_audio_samples(str(src))
+        moments = find_highlights(samples, num_clips=int(num))
+        if not moments:
+            raise gr.Error("Tidak ada momen seru yang ditemukan di video ini.")
 
     words = []
     if pakai_subs:
@@ -212,7 +223,16 @@ with gr.Blocks(title="Auto Clipper") as demo:
     with gr.Row():
         with gr.Column():
             video_in = gr.Video(label="Video stream sumber", sources=["upload"])
-            num = gr.Slider(1, 10, value=5, step=1, label="Jumlah klip")
+            klip_mode = gr.Radio(
+                [("Otomatis — deteksi momen seru", "otomatis"), ("Manual — aku pilih sendiri bagiannya", "manual")],
+                value="otomatis", label="Mode klip",
+            )
+            num = gr.Slider(1, 10, value=5, step=1, label="Jumlah klip (mode otomatis)")
+            manual_text = gr.Textbox(
+                label="Rentang manual — satu per baris: mulai - selesai (detik atau m:ss)",
+                placeholder="1:23 - 1:45\n3:02 - 3:40",
+                lines=3,
+            )
             facecam_mode = gr.Radio(["auto", "manual", "visual"], value="auto", label="Posisi facecam")
             with gr.Row():
                 fx = gr.Number(value=0.78, label="x (manual)")
@@ -249,7 +269,7 @@ with gr.Blocks(title="Auto Clipper") as demo:
             status = gr.Textbox(label="Status", interactive=False)
     tombol.click(
         analisis,
-        inputs=[video_in, num, facecam_mode, fx, fy, fw, fh, fit_mode, top_ratio, model, lang, pakai_subs],
+        inputs=[video_in, num, klip_mode, manual_text, facecam_mode, fx, fy, fw, fh, fit_mode, top_ratio, model, lang, pakai_subs],
         outputs=[analisis_state, *teks_klip, status],
     )
     tombol_render.click(

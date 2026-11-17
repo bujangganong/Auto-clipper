@@ -31,6 +31,50 @@ def _rms_curve(samples: np.ndarray, sample_rate: int, window_sec: float = 0.5) -
     return np.sqrt(np.mean(frames ** 2, axis=1) + 1e-12)
 
 
+def parse_time(teks: str) -> float:
+    """Ubah teks waktu jadi detik: '83', '1:23', '1:02:30', '1:23.5'."""
+    teks = teks.strip()
+    if not teks:
+        raise ValueError("waktu kosong")
+    parts = teks.split(":")
+    if len(parts) > 3:
+        raise ValueError(f"format waktu tidak dikenal: {teks!r}")
+    try:
+        nums = [float(p) for p in parts]
+    except ValueError:
+        raise ValueError(f"format waktu tidak dikenal: {teks!r}") from None
+    total = 0.0
+    for n in nums:
+        total = total * 60 + n
+    return total
+
+
+def parse_ranges(teks: str, duration: float | None = None) -> list[dict]:
+    """Ubah daftar rentang manual jadi segmen [{start, end, score}].
+
+    Format: satu rentang per baris (koma juga boleh), 'mulai - selesai',
+    waktu dalam detik atau mm:ss / hh:mm:ss. Contoh: '1:23 - 1:45'.
+    """
+    moments = []
+    for chunk in teks.replace(",", "\n").splitlines():
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if "-" not in chunk:
+            raise ValueError(f"rentang harus 'mulai - selesai', dapat: {chunk!r}")
+        a, b = chunk.split("-", 1)
+        start, end = parse_time(a), parse_time(b)
+        if end <= start:
+            raise ValueError(f"selesai harus lebih besar dari mulai: {chunk!r}")
+        if duration is not None:
+            start = max(0.0, min(start, duration))
+            end = max(0.0, min(end, duration))
+            if end <= start:
+                continue
+        moments.append({"start": start, "end": end, "score": 0.0})
+    return sorted(moments, key=lambda m: m["start"])
+
+
 def find_highlights(
     samples: np.ndarray,
     sample_rate: int = 16000,

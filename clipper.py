@@ -93,6 +93,8 @@ def main() -> int:
     ap.add_argument("--no-subs", action="store_true", help="Lewati pembuatan subtitle")
     ap.add_argument("--fit", default="crop", choices=["crop", "fit-blur", "fit-hitam"],
                     help="Mode tampilan footage: crop = isi penuh potong sisi, fit-blur/fit-hitam = footage utuh berlatar (default: crop)")
+    ap.add_argument("--manual", default=None,
+                    help="Rentang manual, pisahkan koma, format 'mulai-selesai' (detik atau m:ss). Contoh: --manual '1:23-1:45, 3:02-3:40'. Menggantikan deteksi otomatis.")
     ap.add_argument("--top-ratio", type=float, default=None,
                     help="Tinggi panel footage sebagai rasio kanvas, mis. 0.5 (default: proporsional)")
     args = ap.parse_args()
@@ -113,12 +115,24 @@ def main() -> int:
         box = parse_facecam(args.facecam, width, height)
     print(f"Kotak facecam (x,y,w,h piksel): {box}")
 
-    print("Menganalisis suara untuk momen seru...")
-    samples = extract_audio_samples(str(video))
-    moments = find_highlights(samples, num_clips=args.num)
-    if not moments:
-        print("Tidak ada momen yang ditemukan.", file=sys.stderr)
-        return 1
+    if args.manual:
+        from highlights import parse_ranges
+        try:
+            moments = parse_ranges(args.manual)
+        except ValueError as e:
+            print(f"Rentang manual bermasalah: {e}", file=sys.stderr)
+            return 1
+        if not moments:
+            print("Rentang manual kosong.", file=sys.stderr)
+            return 1
+        print("Mode manual — memakai rentang pilihanmu:")
+    else:
+        print("Menganalisis suara untuk momen seru...")
+        samples = extract_audio_samples(str(video))
+        moments = find_highlights(samples, num_clips=args.num)
+        if not moments:
+            print("Tidak ada momen yang ditemukan.", file=sys.stderr)
+            return 1
     for i, m in enumerate(moments, 1):
         print(f"  Momen {i}: {m['start']:.0f}s - {m['end']:.0f}s (skor {m['score']:.2f})")
 
